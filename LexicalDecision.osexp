@@ -18,7 +18,7 @@ set round_decimals 2
 set mouse_backend xpyriment
 set keyboard_backend legacy
 set height 1080
-set fullscreen no
+set fullscreen yes
 set form_clicks no
 set foreground black
 set font_underline no
