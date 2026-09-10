@@ -62,9 +62,9 @@ define loop Practice
 	run practice_sequence_1
 
 define sketchpad block_start
-	set duration 0
+	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Block [block] is about to begin.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Try to respond quickly, but above all try to make as few mistakes as possible!<br /><br />Use your right hand for both keys!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Block [block] is about to begin.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Try to respond quickly, but above all try to make as few mistakes as possible!<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
 
 define keyboard_response continue_block_keyboard
 	set timeout infinite
@@ -72,8 +72,8 @@ define keyboard_response continue_block_keyboard
 	set event_type keypress
 	set duration keypress
 	set description "Collects keyboard responses"
-	set correct_response q
-	set allowed_responses q
+	set correct_response n
+	set allowed_responses n
 
 define inline_script end_of_block_trigger
 	set description "Executes Python code"
@@ -139,8 +139,8 @@ define sequence experimental_sequence
 	set description "Runs a number of items in sequence"
 	run new_block always
 	run block_start always
-	run continue_block_keyboard always
 	run presstostart always
+	run continue_block_keyboard always
 	run new_block_trigger always
 	run experimental_block always
 	run prepare_adaptive_summary always
@@ -425,8 +425,8 @@ define sequence practice_sequence_1
 	set description "Runs a number of items in sequence"
 	run reset_practice_adaptive_timers always
 	run practice_start always
-	run continue_block_keyboard always
 	run presstostart always
+	run continue_block_keyboard always
 	run practice_block always
 	run prepare_adaptive_summary always
 	run logger always
@@ -434,10 +434,10 @@ define sequence practice_sequence_1
 define sketchpad practice_start
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="The practice session is about to begin. If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Use your right hand for both keys!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="The practice session is about to begin. If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
 
 define sketchpad presstostart
-	set duration keypress
+	set duration 0
 	set description "Displays stimuli"
 	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Press 'n' to begin." x=0 y=0 z_index=0
 
