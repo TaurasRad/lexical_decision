@@ -44,7 +44,7 @@ define loop Experimental
 	set cycles 1
 	set continuous no
 	set break_if_on_first yes
-	set break_if never
+	set break_if "[experimental_trial_count] >= [testing_trial_limit]"
 	setcycle 0 Practice No
 	run experimental_sequence
 
@@ -64,7 +64,7 @@ define loop Practice
 define sketchpad block_start
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Block [block] is about to begin.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Try to respond quickly, but above all try to make as few mistakes as possible!<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="Block [block] is about to begin.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Try to respond quickly, but above all try to make as few mistakes as possible!<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
 
 define keyboard_response continue_block_keyboard
 	set timeout infinite
@@ -78,14 +78,14 @@ define keyboard_response continue_block_keyboard
 define inline_script end_of_block_trigger
 	set description "Executes Python code"
 	___run__
-	if eeg:
+	if globals().get('eeg', False):
 		trigger = 6
 		
 		try: 
 			io.DlPortWritePortUchar(port, trigger)
-			print "Trigger number {} NEW BLOCK TRIGGER".format(trigger)
+			print("Trigger number {} END BLOCK TRIGGER".format(trigger))
 		except:
-			print 'Failed to send trigger!'
+			print('Failed to send trigger!')
 		self.sleep(2)
 		io.DlPortWritePortUchar(port, 0) 
 	__end__
@@ -94,15 +94,13 @@ define inline_script end_of_block_trigger
 define sketchpad end_of_experiment
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="That's all!<br /><br />Thank you very much for participating!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="That's all!<br /><br />Thank you very much for participating!" x=0 y=0 z_index=0
 
 define sequence experiment
 	set flush_keyboard yes
 	set description "Runs a number of items in sequence"
 	run generalpreps always
 	run main_instructions always
-	run Practice always
-	run start_experiment always
 	run Experimental always
 	run end_of_experiment always
 
@@ -115,7 +113,7 @@ define loop experimental_block
 	set cycles 4
 	set continuous no
 	set break_if_on_first yes
-	set break_if never
+	set break_if "[experimental_trial_count] >= [testing_trial_limit]"
 	setcycle 0 stimulus tree
 	setcycle 0 correct_resp n
 	setcycle 0 difficulty easy
@@ -151,7 +149,7 @@ define feedback feedback
 	set reset_variables yes
 	set duration 2000
 	set description "Provides feedback to the participant"
-	draw textline center=1 color=red font_bold=yes font_family=mono font_italic=no font_size=20 html=yes show_if=always text=Incorrect x=0 y=0 z_index=0
+	draw textline center=1 color=red font_bold=yes font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text=Incorrect x=0 y=0 z_index=0
 
 define sketchpad fixation
 	set duration "[fixation_dur]"
@@ -174,6 +172,16 @@ define inline_script generalpreps
 	___prepare__
 	import random
 	var.block=0
+	display_canvas = Canvas()
+	var.display_width = display_canvas.width
+	var.display_height = display_canvas.height
+	resolution_scale = min(
+		var.display_width / 1920.0,
+		var.display_height / 1080.0
+	)
+	var.scaled_font_size = max(1, int(round(20 * resolution_scale)))
+	var.experimental_trial_count = 0
+	var.testing_trial_limit = 50
 	var.data_row_type = 'not_started'
 	var.adaptive_phase = 'initial'
 	var.adaptive_category = ''
@@ -259,6 +267,11 @@ define logger logger
 	log condition
 	log cond
 	log correct_response
+	log display_width
+	log display_height
+	log scaled_font_size
+	log experimental_trial_count
+	log testing_trial_limit
 	log data_row_type
 	log adaptive_phase
 	log adaptive_category
@@ -289,7 +302,7 @@ define logger logger
 define sketchpad main_instructions
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Welcome!<br /><br />In this experiment, you will decide whether a word is a<br />real Dutch word (stoel) or a nonword (estol).<br /><br />You will first complete a short practice session; after that, there will be<br />four blocks of the actual experiment.<br /><br /><br />Press any key to continue to the practice session." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="Welcome!<br /><br />In this experiment, you will decide whether a word is a<br />real Dutch word (stoel) or a nonword (estol).<br /><br />This test session consists of 50 words.<br /><br /><br />Press any key to begin the experiment." x=0 y=0 z_index=0
 
 define inline_script new_block
 	set description "Executes Python code"
@@ -380,13 +393,13 @@ define inline_script prepare_adaptive_summary
 define inline_script new_block_trigger
 	set description "Executes Python code"
 	___run__
-	if eeg:
+	if globals().get('eeg', False):
 		trigger = 4
 		try: 
 			io.DlPortWritePortUchar(port, trigger)
-			print "Trigger number {} NEW BLOCK TRIGGER".format(trigger)
+			print("Trigger number {} NEW BLOCK TRIGGER".format(trigger))
 		except:
-			print 'Failed to send trigger!'
+			print('Failed to send trigger!')
 		self.sleep(2)
 		io.DlPortWritePortUchar(port, 0) 
 	__end__
@@ -434,12 +447,12 @@ define sequence practice_sequence_1
 define sketchpad practice_start
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="The practice session is about to begin. If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="The practice session is about to begin. If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
 
 define sketchpad presstostart
 	set duration 0
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Press 'n' to begin." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="Press 'n' to begin." x=0 y=0 z_index=0
 
 define inline_script response_trigger
 	set description "Executes Python code"
@@ -508,18 +521,21 @@ define inline_script response_trigger
 		var.exposure_Random = var.exposure_time_after
 		var.step_Random = var.step_size_after
 		var.history_Random = var.outcome_history_after
+
+	if str(var.Practice).lower() == 'no':
+		var.experimental_trial_count += 1
 	__end__
 	set _prepare ""
 
 define sketchpad start_experiment
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="That was the practice session.<br /><br />Press any key to continue." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="That was the practice session.<br /><br />Press any key to continue." x=0 y=0 z_index=0
 
 define sketchpad stimulus
 	set duration 0
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="[stimulus]" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="[stimulus]" x=0 y=0 z_index=0
 
 define sequence trial_sequence
 	set flush_keyboard yes
