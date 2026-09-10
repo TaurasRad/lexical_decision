@@ -2,3 +2,4 @@
 __pycache__/
 *.py[cod]
 exposure_plots.png
+subject-*.csv

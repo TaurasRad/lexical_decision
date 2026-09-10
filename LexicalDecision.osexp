@@ -44,7 +44,7 @@ define loop Experimental
 	set cycles 1
 	set continuous no
 	set break_if_on_first yes
-	set break_if "[experimental_trial_count] >= [testing_trial_limit]"
+	set break_if "[experimental_trial_count] >= [total_trial_limit]"
 	setcycle 0 Practice No
 	run experimental_sequence
 
@@ -113,7 +113,7 @@ define loop experimental_block
 	set cycles 4
 	set continuous no
 	set break_if_on_first yes
-	set break_if "[experimental_trial_count] >= [testing_trial_limit]"
+	set break_if "[experimental_trial_count] >= [total_trial_limit]"
 	setcycle 0 stimulus tree
 	setcycle 0 correct_resp n
 	setcycle 0 difficulty easy
@@ -181,8 +181,7 @@ define inline_script generalpreps
 	)
 	var.scaled_font_size = max(1, int(round(20 * resolution_scale)))
 	var.experimental_trial_count = 0
-	# Temporary testing limit. Restore all 4 x 240 = 960 words later.
-	var.testing_trial_limit = 200
+	var.total_trial_limit = 500
 	var.data_row_type = 'not_started'
 	var.adaptive_phase = 'initial'
 	var.adaptive_category = ''
@@ -272,7 +271,7 @@ define logger logger
 	log display_height
 	log scaled_font_size
 	log experimental_trial_count
-	log testing_trial_limit
+	log total_trial_limit
 	log data_row_type
 	log adaptive_phase
 	log adaptive_category
@@ -303,7 +302,7 @@ define logger logger
 define sketchpad main_instructions
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="Welcome!<br /><br />In this experiment, you will decide whether a word is a<br />real Dutch word (stoel) or a nonword (estol).<br /><br />This test session consists of 200 words.<br /><br /><br />Press any key to begin the experiment." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="Welcome!<br /><br />In this experiment, you will decide whether a word is a<br />real Dutch word (stoel) or a nonword (estol).<br /><br />This experiment consists of 500 words.<br /><br /><br />Press any key to begin the experiment." x=0 y=0 z_index=0
 
 define inline_script new_block
 	set description "Executes Python code"
