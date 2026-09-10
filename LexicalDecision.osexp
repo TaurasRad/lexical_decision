@@ -64,7 +64,7 @@ define loop Practice
 define sketchpad block_start
 	set duration 0
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Nu begint blok [block].<br /><br />Als een woord echt is dan druk je op de 'n',<br />als het een nep-woord is op de 'm'.<br /><br />Probeer  snel te reageren, maar vooral zo min mogelijk fouten te maken!<br /><br />Voor beide toetsen moet je je rechterhand gebruiken!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Block [block] is about to begin.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Try to respond quickly, but above all try to make as few mistakes as possible!<br /><br />Use your right hand for both keys!" x=0 y=0 z_index=0
 
 define keyboard_response continue_block_keyboard
 	set timeout infinite
@@ -94,7 +94,7 @@ define inline_script end_of_block_trigger
 define sketchpad end_of_experiment
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Dat was alles!<br /><br />Hartelijk dank voor het meedoen!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="That's all!<br /><br />Thank you very much for participating!" x=0 y=0 z_index=0
 
 define sequence experiment
 	set flush_keyboard yes
@@ -289,7 +289,7 @@ define logger logger
 define sketchpad main_instructions
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Welkom!<br /><br />In dit experiment is het de bedoeling dat je beoordeelt of een woord een<br />echt Nederlands woord (stoel) of een nep-woord (estol) is.<br /><br />Je gaat dit eerste even oefenen; daarna krijg je <br />vier blokken met het echte experiment.<br /><br /><br />Druk op een toets om door te gaan naar de oefensessie." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Welcome!<br /><br />In this experiment, you will decide whether a word is a<br />real Dutch word (stoel) or a nonword (estol).<br /><br />You will first complete a short practice session; after that, there will be<br />four blocks of the actual experiment.<br /><br /><br />Press any key to continue to the practice session." x=0 y=0 z_index=0
 
 define inline_script new_block
 	set description "Executes Python code"
@@ -434,12 +434,12 @@ define sequence practice_sequence_1
 define sketchpad practice_start
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Nu begint de oefensessie. Als een woord echt is dan druk je op de 'n',<br />als het een nep-woord is op de 'm'.<br /><br />Voor beide toetsen moet je je rechterhand gebruiken!" x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="The practice session is about to begin. If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Use your right hand for both keys!" x=0 y=0 z_index=0
 
 define sketchpad presstostart
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Druk op 'n' om te beginnen." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Press 'n' to begin." x=0 y=0 z_index=0
 
 define inline_script response_trigger
 	set description "Executes Python code"
@@ -514,7 +514,7 @@ define inline_script response_trigger
 define sketchpad start_experiment
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Dat was de oefensessie. <br /><br />Druk op een toets om door te gaan." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="That was the practice session.<br /><br />Press any key to continue." x=0 y=0 z_index=0
 
 define sketchpad stimulus
 	set duration 0
