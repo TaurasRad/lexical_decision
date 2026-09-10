@@ -1,0 +1,536 @@
+---
+API: 2.1
+OpenSesame: 3.3.12
+Platform: posix
+---
+set width 1920
+set uniform_coordinates yes
+set title LexicalDecision
+set subject_parity even
+set subject_nr 0
+set start experiment
+set sound_sample_size -16
+set sound_freq 48000
+set sound_channels 2
+set sound_buf_size 1024
+set sampler_backend legacy
+set round_decimals 2
+set mouse_backend xpyriment
+set keyboard_backend legacy
+set height 1080
+set fullscreen no
+set form_clicks no
+set foreground black
+set font_underline no
+set font_size 20
+set font_italic no
+set font_family mono
+set font_bold no
+set experiment_path "/Users/Jelmer/Work/Vakken/MethodsCCS/MethodsCCS_2223/paradigms/LexicalDecision"
+set disable_garbage_collection yes
+set description "The main experiment item"
+set coordinates uniform
+set compensation 0
+set color_backend legacy
+set clock_backend legacy
+set canvas_backend xpyriment
+set background white
+
+define loop Experimental
+	set source table
+	set repeat 4
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 Practice No
+	run experimental_sequence
+
+define loop Practice
+	set source_file ""
+	set source table
+	set repeat 1
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 Practice Yes
+	run practice_sequence_1
+
+define sketchpad block_start
+	set duration 0
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Nu begint blok [block].<br /><br />Als een woord echt is dan druk je op de 'n',<br />als het een nep-woord is op de 'm'.<br /><br />Probeer  snel te reageren, maar vooral zo min mogelijk fouten te maken!<br /><br />Voor beide toetsen moet je je rechterhand gebruiken!" x=0 y=0 z_index=0
+
+define keyboard_response continue_block_keyboard
+	set timeout infinite
+	set flush yes
+	set event_type keypress
+	set duration keypress
+	set description "Collects keyboard responses"
+	set correct_response q
+	set allowed_responses q
+
+define inline_script end_of_block_trigger
+	set description "Executes Python code"
+	___run__
+	if eeg:
+		trigger = 6
+		
+		try: 
+			io.DlPortWritePortUchar(port, trigger)
+			print "Trigger number {} NEW BLOCK TRIGGER".format(trigger)
+		except:
+			print 'Failed to send trigger!'
+		self.sleep(2)
+		io.DlPortWritePortUchar(port, 0) 
+	__end__
+	set _prepare ""
+
+define sketchpad end_of_experiment
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Dat was alles!<br /><br />Hartelijk dank voor het meedoen!" x=0 y=0 z_index=0
+
+define sequence experiment
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run generalpreps always
+	run main_instructions always
+	run Practice always
+	run start_experiment always
+	run Experimental always
+	run end_of_experiment always
+
+define loop experimental_block
+	set source_file "Material/stims_LD[subject_nr]_block[block].csv"
+	set source file
+	set repeat 1
+	set order sequential
+	set description "Repeatedly runs another item"
+	set cycles 4
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 stimulus tree
+	setcycle 0 correct_resp n
+	setcycle 0 difficulty easy
+	setcycle 0 probe word
+	setcycle 1 stimulus ters
+	setcycle 1 correct_resp m
+	setcycle 1 difficulty easy
+	setcycle 1 probe nonword
+	setcycle 2 stimulus swing
+	setcycle 2 correct_resp n
+	setcycle 2 difficulty hard
+	setcycle 2 probe word
+	setcycle 3 stimulus swint
+	setcycle 3 correct_resp m
+	setcycle 3 difficulty hard
+	setcycle 3 probe nonword
+	run trial_sequence
+
+define sequence experimental_sequence
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run new_block always
+	run block_start always
+	run continue_block_keyboard always
+	run presstostart always
+	run new_block_trigger always
+	run experimental_block always
+	run prepare_adaptive_summary always
+	run logger always
+	run end_of_block_trigger always
+
+define feedback feedback
+	set reset_variables yes
+	set duration 2000
+	set description "Provides feedback to the participant"
+	draw textline center=1 color=red font_bold=yes font_family=mono font_italic=no font_size=20 html=yes show_if=always text=Incorrect x=0 y=0 z_index=0
+
+define sketchpad fixation
+	set duration "[fixation_dur]"
+	set description "Displays stimuli"
+	draw fixdot color=black show_if=always style=default x=0 y=0 z_index=0
+
+define sketchpad fixation_1
+	set duration 0
+	set description "Displays stimuli"
+	draw fixdot color=black show_if=always style=default x=0 y=0 z_index=0
+
+define inline_script fixation_duration
+	set description "Executes Python code"
+	set _run ""
+	set _prepare "var.fixation_dur=random.randint(400,600) - 5# -5 to match with a refresh rate of the screen"
+
+define inline_script generalpreps
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	import random
+	var.block=0
+	var.data_row_type = 'not_started'
+	var.adaptive_phase = 'initial'
+	var.adaptive_category = ''
+	var.exposure_HF = 2000
+	var.exposure_LF = 2000
+	var.exposure_Pseudo = 2000
+	var.exposure_Random = 2000
+	var.step_HF = 50
+	var.step_LF = 50
+	var.step_Pseudo = 50
+	var.step_Random = 50
+	var.history_HF = ''
+	var.history_LF = ''
+	var.history_Pseudo = ''
+	var.history_Random = ''
+	var.exposure_time_before = 2000
+	var.exposure_time_after = 2000
+	var.step_size_before = 50
+	var.step_size_applied = 50
+	var.step_size_after = 50
+	var.outcome_history_before = ''
+	var.outcome_history_after = ''
+	var.alternation_detected = 0
+	var.response_was_timeout = 0
+	var.adaptive_change = 0
+	var.exposure_floor_reached = 0
+	__end__
+
+define keyboard_response keyboard_response
+	set timeout "[exposure_time_before]"
+	set flush yes
+	set event_type keypress
+	set duration keypress
+	set description "Collects keyboard responses"
+	set correct_response "[correct_response]"
+	set allowed_responses "n;m"
+
+define logger logger
+	set description "Logs experimental data"
+	set auto_log no
+	log Practice
+	log accuracy
+	log block
+	log correct
+	log correct_keyboard_response
+	log experiment_path
+	log fixation_dur
+	log keyboard_backend
+	log mouse_backend
+	log response_keyboard_response
+	log response_time_keyboard_response
+	log subject_nr
+	log time_block_start
+	log time_end_of_experiment
+	log time_end_of_block_trigger
+	log time_end_of_practice_block_trigger
+	log time_experiment
+	log time_experimental_block
+	log time_experimental_sequence
+	log time_feedback
+	log time_fixation
+	log time_fixation_duration
+	log time_generalpreps
+	log time_keyboard_response
+	log time_Experimental
+	log time_Practice
+	log time_main_instructions
+	log time_new_block
+	log time_new_block_trigger
+	log time_new_sketchpad
+	log time_practice_block
+	log time_practice_block_trigger
+	log time_practice_sequence_1
+	log time_practice_start
+	log time_presstostart
+	log time_response_trigger
+	log time_stimulus
+	log time_stimulus_trigger
+	log time_trial_sequence
+	log title
+	log RT
+	log stimulus
+	log condition
+	log cond
+	log correct_response
+	log data_row_type
+	log adaptive_phase
+	log adaptive_category
+	log exposure_time_before
+	log exposure_time_after
+	log step_size_before
+	log step_size_applied
+	log step_size_after
+	log outcome_history_before
+	log outcome_history_after
+	log alternation_detected
+	log response_was_timeout
+	log adaptive_change
+	log exposure_floor_reached
+	log exposure_HF
+	log exposure_LF
+	log exposure_Pseudo
+	log exposure_Random
+	log step_HF
+	log step_LF
+	log step_Pseudo
+	log step_Random
+	log history_HF
+	log history_LF
+	log history_Pseudo
+	log history_Random
+
+define sketchpad main_instructions
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Welkom!<br /><br />In dit experiment is het de bedoeling dat je beoordeelt of een woord een<br />echt Nederlands woord (stoel) of een nep-woord (estol) is.<br /><br />Je gaat dit eerste even oefenen; daarna krijg je <br />vier blokken met het echte experiment.<br /><br /><br />Druk op een toets om door te gaan naar de oefensessie." x=0 y=0 z_index=0
+
+define inline_script new_block
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	var.block = var.block + 1
+	var.adaptive_phase = 'experimental'
+	var.data_row_type = 'setup'
+	var.exposure_HF = 2000
+	var.exposure_LF = 2000
+	var.exposure_Pseudo = 2000
+	var.exposure_Random = 2000
+	var.step_HF = 50
+	var.step_LF = 50
+	var.step_Pseudo = 50
+	var.step_Random = 50
+	var.history_HF = ''
+	var.history_LF = ''
+	var.history_Pseudo = ''
+	var.history_Random = ''
+	__end__
+
+define inline_script reset_practice_adaptive_timers
+	set description "Resets the four adaptive timers for practice"
+	___run__
+	var.adaptive_phase = 'practice'
+	var.data_row_type = 'setup'
+	var.exposure_HF = 2000
+	var.exposure_LF = 2000
+	var.exposure_Pseudo = 2000
+	var.exposure_Random = 2000
+	var.step_HF = 50
+	var.step_LF = 50
+	var.step_Pseudo = 50
+	var.step_Random = 50
+	var.history_HF = ''
+	var.history_LF = ''
+	var.history_Pseudo = ''
+	var.history_Random = ''
+	__end__
+	set _prepare ""
+
+define inline_script prepare_adaptive_trial
+	set description "Selects the adaptive timer for the current category"
+	set _run ""
+	___prepare__
+	category = str(var.cond)
+	var.data_row_type = 'trial'
+	var.adaptive_category = category
+	var.alternation_detected = 0
+	var.response_was_timeout = 0
+	var.adaptive_change = 0
+	var.exposure_floor_reached = 0
+	
+	if category == 'HF':
+		var.exposure_time_before = var.exposure_HF
+		var.step_size_before = var.step_HF
+		var.outcome_history_before = var.history_HF
+	elif category == 'LF':
+		var.exposure_time_before = var.exposure_LF
+		var.step_size_before = var.step_LF
+		var.outcome_history_before = var.history_LF
+	elif category == 'Pseudo':
+		var.exposure_time_before = var.exposure_Pseudo
+		var.step_size_before = var.step_Pseudo
+		var.outcome_history_before = var.history_Pseudo
+	elif category == 'Random':
+		var.exposure_time_before = var.exposure_Random
+		var.step_size_before = var.step_Random
+		var.outcome_history_before = var.history_Random
+	else:
+		raise ValueError('Unknown adaptive category: {}'.format(category))
+	
+	var.exposure_time_after = var.exposure_time_before
+	var.step_size_applied = var.step_size_before
+	var.step_size_after = var.step_size_before
+	var.outcome_history_after = var.outcome_history_before
+	__end__
+
+define inline_script prepare_adaptive_summary
+	set description "Marks an end-of-block adaptive summary row"
+	___run__
+	var.data_row_type = 'block_summary'
+	var.adaptive_category = 'ALL'
+	__end__
+	set _prepare ""
+
+define inline_script new_block_trigger
+	set description "Executes Python code"
+	___run__
+	if eeg:
+		trigger = 4
+		try: 
+			io.DlPortWritePortUchar(port, trigger)
+			print "Trigger number {} NEW BLOCK TRIGGER".format(trigger)
+		except:
+			print 'Failed to send trigger!'
+		self.sleep(2)
+		io.DlPortWritePortUchar(port, 0) 
+	__end__
+	set _prepare ""
+
+define loop practice_block
+	set source_file "Material/stims_LD[subject_nr]_practice.csv"
+	set source file
+	set repeat 1
+	set order sequential
+	set description "Repeatedly runs another item"
+	set cycles 4
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 stimulus tree
+	setcycle 0 correct_response n
+	setcycle 0 difficulty easy
+	setcycle 0 probe word
+	setcycle 1 stimulus ters
+	setcycle 1 correct_response m
+	setcycle 1 difficulty easy
+	setcycle 1 probe nonword
+	setcycle 2 stimulus swing
+	setcycle 2 correct_response n
+	setcycle 2 difficulty hard
+	setcycle 2 probe word
+	setcycle 3 stimulus swint
+	setcycle 3 correct_response m
+	setcycle 3 difficulty hard
+	setcycle 3 probe nonword
+	run trial_sequence
+
+define sequence practice_sequence_1
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run reset_practice_adaptive_timers always
+	run practice_start always
+	run continue_block_keyboard always
+	run presstostart always
+	run practice_block always
+	run prepare_adaptive_summary always
+	run logger always
+
+define sketchpad practice_start
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Nu begint de oefensessie. Als een woord echt is dan druk je op de 'n',<br />als het een nep-woord is op de 'm'.<br /><br />Voor beide toetsen moet je je rechterhand gebruiken!" x=0 y=0 z_index=0
+
+define sketchpad presstostart
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Druk op 'n' om te beginnen." x=0 y=0 z_index=0
+
+define inline_script response_trigger
+	set description "Executes Python code"
+	___run__
+	# if no response is given
+	if var.response_keyboard_response == 'None' or var.response_keyboard_response == None:
+		var.response = 'None'
+		var.accuracy = 0  # incorrect
+		var.response_was_timeout = 1
+	
+	else:
+		if var.response_keyboard_response == var.correct_response:
+	
+			var.accuracy = 1 # correct
+		else:
+	
+			var.accuracy = 0 # false
+		
+	var.RT = var.response_time_keyboard_response
+	
+	# Update only the staircase belonging to this trial's category.
+	# The current outcome is added before checking the four-answer pattern,
+	# so a detected alternation halves the step before this trial's update.
+	history = str(var.outcome_history_before) + str(var.accuracy)
+	if len(history) > 4:
+		history = history[-4:]
+	
+	var.alternation_detected = int(
+		len(history) == 4 and history in ('0101', '1010')
+	)
+	if var.alternation_detected:
+		var.step_size_applied = max(10, int(var.step_size_before / 2.0))
+		history = ''
+	else:
+		var.step_size_applied = var.step_size_before
+	
+	if var.accuracy == 1:
+		var.exposure_time_after = max(
+			50, int(var.exposure_time_before - var.step_size_applied)
+		)
+		var.exposure_floor_reached = int(var.exposure_time_after == 50)
+	else:
+		var.exposure_time_after = int(
+			var.exposure_time_before + var.step_size_applied
+		)
+	
+	var.step_size_after = var.step_size_applied
+	var.outcome_history_after = history
+	var.adaptive_change = (
+		var.exposure_time_after - var.exposure_time_before
+	)
+	
+	if var.adaptive_category == 'HF':
+		var.exposure_HF = var.exposure_time_after
+		var.step_HF = var.step_size_after
+		var.history_HF = var.outcome_history_after
+	elif var.adaptive_category == 'LF':
+		var.exposure_LF = var.exposure_time_after
+		var.step_LF = var.step_size_after
+		var.history_LF = var.outcome_history_after
+	elif var.adaptive_category == 'Pseudo':
+		var.exposure_Pseudo = var.exposure_time_after
+		var.step_Pseudo = var.step_size_after
+		var.history_Pseudo = var.outcome_history_after
+	elif var.adaptive_category == 'Random':
+		var.exposure_Random = var.exposure_time_after
+		var.step_Random = var.step_size_after
+		var.history_Random = var.outcome_history_after
+	__end__
+	set _prepare ""
+
+define sketchpad start_experiment
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="Dat was de oefensessie. <br /><br />Druk op een toets om door te gaan." x=0 y=0 z_index=0
+
+define sketchpad stimulus
+	set duration 0
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=20 html=yes show_if=always text="[stimulus]" x=0 y=0 z_index=0
+
+define sequence trial_sequence
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run prepare_adaptive_trial always
+	run fixation_duration always
+	run fixation always
+	run stimulus always
+	run keyboard_response always
+	run response_trigger always
+	run feedback "[correct_keyboard_response] == 0"
+	run fixation_1 always
+	run logger always
+
