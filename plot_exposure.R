@@ -38,5 +38,21 @@ plot_exposure <- function(file = NULL) {
   invisible(d)
 }
 
-# Uses the newest subject-*.csv file in this folder.
-plot_exposure()
+show_exposure_plots <- function(file = NULL) {
+  if (dev.cur() == 1L) dev.new(width = 10, height = 8)
+  plot_exposure(file)
+}
+
+save_exposure_plots <- function(file = NULL,
+                                output = "exposure_plots.png") {
+  png(output, width = 1400, height = 1000, res = 150)
+  on.exit(dev.off())
+  plot_exposure(file)
+  normalizePath(output, mustWork = FALSE)
+}
+
+if (interactive()) {
+  show_exposure_plots()
+} else if (sys.nframe() == 0L) {
+  message("Saved: ", save_exposure_plots())
+}
