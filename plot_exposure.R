@@ -1,6 +1,9 @@
 plot_exposure <- function(file = NULL) {
   if (is.null(file)) {
-    files <- list.files(pattern = "^subject-[0-9]+\\.csv$")
+    files <- list.files("results", pattern = "^subject-[0-9]+\\.csv$", full.names = TRUE)
+    if (!length(files)) {
+      files <- list.files(pattern = "^subject-[0-9]+\\.csv$")
+    }
     if (!length(files)) stop("No subject-*.csv files found")
     file <- files[which.max(file.info(files)$mtime)]
   }
@@ -44,7 +47,8 @@ show_exposure_plots <- function(file = NULL) {
 }
 
 save_exposure_plots <- function(file = NULL,
-                                output = "exposure_plots.png") {
+                                output = file.path("results", "exposure_plots.png")) {
+  dir.create(dirname(output), showWarnings = FALSE, recursive = TRUE)
   png(output, width = 1400, height = 1000, res = 150)
   on.exit(dev.off())
   plot_exposure(file)

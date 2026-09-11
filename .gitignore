@@ -1,5 +1,5 @@
 .DS_Store
 __pycache__/
 *.py[cod]
-exposure_plots.png
-subject-*.csv
+/exposure_plots.png
+/subject-*.csv
