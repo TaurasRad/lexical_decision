@@ -164,7 +164,7 @@ define sketchpad fixation_1
 define inline_script fixation_duration
 	set description "Executes Python code"
 	set _run ""
-	set _prepare "var.fixation_dur=random.randint(400,600) - 5# -5 to match with a refresh rate of the screen"
+	set _prepare "var.fixation_dur=random.randint(400,600) - 5"
 
 define inline_script generalpreps
 	set description "Executes Python code"
@@ -457,25 +457,21 @@ define sketchpad presstostart
 define inline_script response_trigger
 	set description "Executes Python code"
 	___run__
-	# if no response is given
 	if var.response_keyboard_response == 'None' or var.response_keyboard_response == None:
 		var.response = 'None'
-		var.accuracy = 0  # incorrect
+		var.accuracy = 0
 		var.response_was_timeout = 1
 	
 	else:
 		if var.response_keyboard_response == var.correct_response:
 	
-			var.accuracy = 1 # correct
+			var.accuracy = 1
 		else:
 	
-			var.accuracy = 0 # false
+			var.accuracy = 0
 		
 	var.RT = var.response_time_keyboard_response
 	
-	# Update only the staircase belonging to this trial's category.
-	# The current outcome is added before checking the four-answer pattern,
-	# so a detected alternation halves the step before this trial's update.
 	history = str(var.outcome_history_before) + str(var.accuracy)
 	if len(history) > 4:
 		history = history[-4:]
