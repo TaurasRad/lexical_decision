@@ -1,0 +1,531 @@
+---
+API: 2.1
+OpenSesame: 3.3.12
+Platform: nt
+---
+set width 1920
+set uniform_coordinates yes
+set title LexicalDecision_pupil
+set subject_parity even
+set subject_nr 0
+set start experiment
+set sound_sample_size -16
+set sound_freq 48000
+set sound_channels 2
+set sound_buf_size 1024
+set sampler_backend legacy
+set round_decimals 2
+set mouse_backend psycho
+set keyboard_backend psycho
+set height 1080
+set fullscreen yes
+set form_clicks no
+set foreground black
+set font_underline no
+set font_size 20
+set font_italic no
+set font_family mono
+set font_bold no
+set disable_garbage_collection yes
+set description "Adaptive exposure duration lexical decision with pupillometry (preregistered design)"
+set coordinates uniform
+set compensation 0
+set color_backend psycho
+set clock_backend psycho
+set canvas_backend psycho
+set background white
+
+define sequence experiment
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run generalpreps always
+	run sleep_questions always
+	run pygaze_init always
+	run eyelink_setup always
+	run main_instructions always
+	run practice_sequence always
+	run block1_sequence always
+	run block2_sequence always
+	run end_of_experiment always
+
+define inline_script generalpreps
+	set description "Global variables and helper functions"
+	set _run ""
+	___prepare__
+	import random
+	
+	# In fullscreen, PsychoPy opens the window at the real screen size regardless of the
+	# width/height set in the experiment properties. Copy that size back so that canvases,
+	# font scaling and the PyGaze calibration targets (DISPSIZE) match the actual display.
+	var.requested_width = var.width
+	var.requested_height = var.height
+	if var.fullscreen == 'yes':
+		window = globals().get('win', None)
+		if window is None:
+			window = getattr(exp, 'window', None)
+		if window is not None:
+			var.width = int(window.size[0])
+			var.height = int(window.size[1])
+	
+	display_canvas = Canvas()
+	var.display_width = display_canvas.width
+	var.display_height = display_canvas.height
+	resolution_scale = min(
+		var.display_width / 1920.0,
+		var.display_height / 1080.0
+	)
+	var.scaled_font_size = max(1, int(round(20 * resolution_scale)))
+	
+	# Preregistered timing and adaptive parameters
+	var.fixation_dur = 2000
+	var.baseline_dur = 200
+	var.post_block_fixation_dur = 2000
+	var.initial_exposure = 1500
+	var.initial_step = 50
+	var.min_exposure = 50
+	var.min_step = 10
+	
+	var.block = 0
+	var.practice_trial_count = 0
+	var.experimental_trial_count = 0
+	var.data_row_type = 'not_started'
+	var.adaptive_phase = 'initial'
+	var.adaptive_category = ''
+	var.eyelink_setup_status = 'not_set'
+	
+	CATEGORIES = ['HF', 'LF', 'Pseudo', 'Random']
+	
+	def reset_adaptive_parameters():
+		for category in CATEGORIES:
+			var.set('exposure_' + category, var.initial_exposure)
+			var.set('step_' + category, var.initial_step)
+			var.set('history_' + category, '')
+	
+	def et_log(msg):
+		eyetracker.log(msg)
+	
+	# Show a stimulus slightly before the target time so the flip lands on it
+	FLIP_MARGIN = 8
+	
+	reset_adaptive_parameters()
+	__end__
+
+define inline_script sleep_questions
+	set description "Self-reported sleep (exploratory, collected before the task)"
+	set _prepare ""
+	___run__
+	def ask_hours(question):
+		while True:
+			form = Form(cols=[1], rows=[2, 1, 1], spacing=25)
+			form.set_widget(Label(text=question, center=True), (0, 0))
+			text_input = TextInput(return_accepts=True, stub='')
+			form.set_widget(text_input, (0, 1))
+			form.set_widget(Label(text='Type a number of hours and press Enter.', center=True), (0, 2))
+			answer = form._exec(focus_widget=text_input)
+			try:
+				value = float(str(answer).strip().replace(',', '.'))
+			except ValueError:
+				continue
+			if 0 <= value <= 24:
+				return value
+	
+	var.sleep_last_night = ask_hours('How many hours did you sleep last night?')
+	var.sleep_average = ask_hours('On average, how many hours do you typically sleep?')
+	__end__
+
+define pygaze_init pygaze_init
+	set tracker_type EyeLink
+	set eyelink_pupil_size_mode area
+	set eyelink_force_drift_correct no
+	set description "Initialize and calibrate eye tracker"
+	set calibrate yes
+	set calbeep yes
+	set sacc_vel_thr 35
+	set sacc_acc_thr 9500
+	set _logfile automatic
+
+define inline_script eyelink_setup
+	set description "Preregistered acquisition: binocular recording at 2000 Hz (EyeLink only)"
+	set _prepare ""
+	___run__
+	if hasattr(eyetracker, 'send_command'):
+		eyetracker.send_command('binocular_enabled = YES')
+		eyetracker.send_command('sample_rate = 2000')
+		var.eyelink_setup_status = 'binocular_2000Hz_requested'
+	else:
+		var.eyelink_setup_status = 'not_eyelink'
+	__end__
+
+define sketchpad main_instructions
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="Welcome!<br /><br />In this experiment, you will decide whether a letter string is a<br />real Dutch word (stoel) or a nonword (estol).<br /><br />Each trial starts with a cross in the centre of the screen.<br />Keep looking at the centre of the screen and keep your head still on the chin rest.<br /><br />You will first do 12 practice trials, followed by 2 blocks of 50 trials.<br /><br /><br />Press any key to continue." x=0 y=0 z_index=0
+
+define sketchpad practice_start
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="The practice session is about to begin.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />The word disappears if you do not respond in time.<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
+
+define sketchpad block_start
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="Block [block] of 2 is about to begin.<br /><br />The eye tracker will be calibrated first.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />Try to respond quickly, but above all try to make as few mistakes as possible!<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
+
+define sketchpad presstostart
+	set duration 0
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="Press 'n' to begin." x=0 y=0 z_index=0
+
+define keyboard_response continue_block_keyboard
+	set timeout infinite
+	set flush yes
+	set event_type keypress
+	set duration keypress
+	set description "Collects keyboard responses"
+	set correct_response n
+	set allowed_responses n
+
+define sketchpad end_of_experiment
+	set duration keypress
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="That's all!<br /><br />Thank you very much for participating!" x=0 y=0 z_index=0
+
+define inline_script start_practice
+	set description "Practice: same trial structure, adaptive parameters at initial values"
+	set _prepare ""
+	___run__
+	var.adaptive_phase = 'practice'
+	var.block = 0
+	reset_adaptive_parameters()
+	__end__
+
+define inline_script new_block
+	set description "Experimental block setup; adaptive parameters reset only before block 1"
+	set _run ""
+	___prepare__
+	var.block = var.block + 1
+	var.adaptive_phase = 'experimental'
+	if var.block == 1:
+		reset_adaptive_parameters()
+	__end__
+
+define inline_script calibrate_eyetracker
+	set description "Calibration and validation before each experimental block (no drift correction)"
+	set _prepare ""
+	___run__
+	eyetracker.calibrate()
+	__end__
+
+define inline_script start_recording
+	set description "Start eye-tracker recording for this block"
+	set _prepare ""
+	___run__
+	eyetracker.start_recording()
+	clock.sleep(100)
+	if var.adaptive_phase == 'practice':
+		et_log('StartPractice')
+	else:
+		et_log('StartBlock {}'.format(var.block))
+	__end__
+
+define inline_script end_block
+	set description "Final 2000 ms fixation so the last pupil response can return to baseline, then stop recording"
+	___prepare__
+	end_fixation_canvas = Canvas()
+	end_fixation_canvas.fixdot(style='medium-cross', color='black')
+	__end__
+	___run__
+	label = 'Practice' if var.adaptive_phase == 'practice' else 'Block {}'.format(var.block)
+	end_fixation_canvas.show()
+	et_log('EndFixationOnset {}'.format(label))
+	clock.sleep(var.post_block_fixation_dur)
+	et_log('EndFixationOffset {}'.format(label))
+	if var.adaptive_phase == 'practice':
+		et_log('EndPractice')
+	else:
+		et_log('EndBlock {}'.format(var.block))
+	eyetracker.stop_recording()
+	__end__
+
+define sequence practice_sequence
+	set flush_keyboard yes
+	set description "Calibrated by pygaze_init; 12 practice trials"
+	run start_practice always
+	run practice_start always
+	run presstostart always
+	run continue_block_keyboard always
+	run start_recording always
+	run practice_loop always
+	run end_block always
+
+define loop practice_loop
+	set source_file "Material/prereg/stims_practice.csv"
+	set source file
+	set repeat 1
+	set order random
+	set description "12 practice trials (3 per category, not used in the analysis)"
+	set cycles 12
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	run trial_sequence
+
+define sequence block1_sequence
+	set flush_keyboard yes
+	set description "Block 1: 50 trials in random order"
+	run new_block always
+	run block_start always
+	run calibrate_eyetracker always
+	run presstostart always
+	run continue_block_keyboard always
+	run start_recording always
+	run block1_loop always
+	run end_block always
+
+define loop block1_loop
+	set source_file "Material/prereg/stims_block1.csv"
+	set source file
+	set repeat 1
+	set order random
+	set description "Block 1: 13 HF, 13 LF, 12 Pseudo, 12 Random in random order"
+	set cycles 50
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	run trial_sequence
+
+define sequence block2_sequence
+	set flush_keyboard yes
+	set description "Block 2: 50 trials in a fixed order, identical for every participant"
+	run new_block always
+	run block_start always
+	run calibrate_eyetracker always
+	run presstostart always
+	run continue_block_keyboard always
+	run start_recording always
+	run block2_loop always
+	run end_block always
+
+define loop block2_loop
+	set source_file "Material/prereg/stims_block2.csv"
+	set source file
+	set repeat 1
+	set order sequential
+	set description "Block 2: 12 HF, 12 LF, 13 Pseudo, 13 Random in a fixed order"
+	set cycles 50
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	run trial_sequence
+
+define sequence trial_sequence
+	set flush_keyboard yes
+	set description "Fixation 2000 ms -> stimulus until response or exposure deadline"
+	run prepare_adaptive_trial always
+	run trial_script always
+	run update_adaptive always
+	run logger always
+	run end_trial always
+
+define inline_script prepare_adaptive_trial
+	set description "Selects the adaptive parameters of the current category"
+	set _run ""
+	___prepare__
+	category = str(var.cond)
+	if category not in CATEGORIES:
+		raise ValueError('Unknown adaptive category: {}'.format(category))
+	
+	var.data_row_type = 'trial'
+	var.adaptive_category = category
+	var.alternation_detected = 0
+	var.response_was_timeout = 0
+	var.adaptive_change = 0
+	var.exposure_floor_reached = 0
+	
+	if var.adaptive_phase == 'practice':
+		var.practice_trial_count += 1
+		var.trial_tag = 'PracticeTrial'
+		var.trial_id = 'P{}'.format(var.practice_trial_count)
+		var.trial_label = var.practice_trial_count
+	else:
+		var.experimental_trial_count += 1
+		var.trial_tag = 'Trial'
+		var.trial_id = str(var.experimental_trial_count)
+		var.trial_label = var.experimental_trial_count
+	
+	var.exposure_time_before = var.get('exposure_' + category)
+	var.step_size_before = var.get('step_' + category)
+	var.outcome_history_before = var.get('history_' + category)
+	
+	var.exposure_time_after = var.exposure_time_before
+	var.step_size_applied = var.step_size_before
+	var.step_size_after = var.step_size_before
+	var.outcome_history_after = var.outcome_history_before
+	__end__
+
+define inline_script trial_script
+	set description "One trial with eye-tracker messages (StartTrial N ... EndTrial N)"
+	___prepare__
+	fixation_canvas = Canvas()
+	fixation_canvas.fixdot(style='medium-cross', color='black')
+	
+	stimulus_canvas = Canvas()
+	stimulus_canvas.text(
+		str(var.stimulus), color='black', font_family='mono',
+		font_size=var.scaled_font_size, html=False
+	)
+	
+	trial_keyboard = Keyboard(keylist=['n', 'm'], timeout=None)
+	__end__
+	___run__
+	tid = var.trial_id
+	
+	et_log('Start{} {}'.format(var.trial_tag, var.trial_label))
+	et_log(
+		'TrialInfo {} phase={} block={} cond={} stimulus={} correct_response={} '
+		'exposure={} step={}'.format(
+			tid, var.adaptive_phase, var.block, var.cond, var.stimulus,
+			var.correct_response, var.exposure_time_before, var.step_size_before
+		)
+	)
+	
+	var.time_fixation_onset = fixation_canvas.show()
+	et_log('FixationOnset {}'.format(tid))
+	
+	clock.sleep(max(0, var.time_fixation_onset + var.fixation_dur - var.baseline_dur - clock.time()))
+	var.time_baseline_start = clock.time()
+	et_log('BaselineStart {}'.format(tid))
+	
+	trial_keyboard.flush()
+	clock.sleep(max(0, var.time_fixation_onset + var.fixation_dur - FLIP_MARGIN - clock.time()))
+	var.time_stimulus_onset = stimulus_canvas.show()
+	et_log('StimulusOnset {}'.format(tid))
+	
+	remaining = var.exposure_time_before - (clock.time() - var.time_stimulus_onset)
+	key, time_key = trial_keyboard.get_key(timeout=max(1, int(round(remaining))))
+	
+	var.time_stimulus_offset = fixation_canvas.show()
+	
+	if key is None:
+		var.response = 'None'
+		var.response_was_timeout = 1
+		var.correct = 0
+		var.RT = var.time_stimulus_offset - var.time_stimulus_onset
+		var.time_response = 'NA'
+		et_log('Timeout {} exposure={}'.format(tid, var.exposure_time_before))
+	else:
+		var.response = key
+		var.response_was_timeout = 0
+		var.correct = int(key == var.correct_response)
+		var.RT = time_key - var.time_stimulus_onset
+		var.time_response = time_key
+		et_log('Response {} key={} rt={:.1f} correct={}'.format(tid, key, var.RT, var.correct))
+	
+	var.accuracy = var.correct
+	var.exposure_T = var.RT
+	et_log('StimulusOffset {}'.format(tid))
+	__end__
+
+define inline_script update_adaptive
+	set description "Staircase update for the current category only"
+	set _prepare ""
+	___run__
+	history = str(var.outcome_history_before) + str(var.accuracy)
+	if len(history) > 4:
+		history = history[-4:]
+	
+	var.alternation_detected = int(len(history) == 4 and history in ('0101', '1010'))
+	if var.alternation_detected:
+		var.step_size_applied = max(var.min_step, int(var.step_size_before / 2.0))
+		history = ''
+	else:
+		var.step_size_applied = var.step_size_before
+	
+	if var.accuracy == 1:
+		var.exposure_time_after = max(
+			var.min_exposure, int(var.exposure_time_before - var.step_size_applied)
+		)
+		var.exposure_floor_reached = int(var.exposure_time_after == var.min_exposure)
+	else:
+		var.exposure_time_after = int(var.exposure_time_before + var.step_size_applied)
+	
+	var.step_size_after = var.step_size_applied
+	var.outcome_history_after = history
+	var.adaptive_change = var.exposure_time_after - var.exposure_time_before
+	
+	category = var.adaptive_category
+	var.set('exposure_' + category, var.exposure_time_after)
+	var.set('step_' + category, var.step_size_after)
+	var.set('history_' + category, var.outcome_history_after)
+	__end__
+
+define inline_script end_trial
+	set description "Last thing in each trial"
+	set _prepare ""
+	___run__
+	et_log('End{} {}'.format(var.trial_tag, var.trial_label))
+	__end__
+
+define logger logger
+	set description "Logs experimental data"
+	set auto_log no
+	log subject_nr
+	log sleep_last_night
+	log sleep_average
+	log data_row_type
+	log adaptive_phase
+	log block
+	log practice_trial_count
+	log experimental_trial_count
+	log trial_id
+	log item_nr
+	log stimulus
+	log cond
+	log condition
+	log correct_response
+	log response
+	log correct
+	log accuracy
+	log RT
+	log exposure_T
+	log response_was_timeout
+	log adaptive_category
+	log exposure_time_before
+	log exposure_time_after
+	log step_size_before
+	log step_size_applied
+	log step_size_after
+	log outcome_history_before
+	log outcome_history_after
+	log alternation_detected
+	log adaptive_change
+	log exposure_floor_reached
+	log exposure_HF
+	log exposure_LF
+	log exposure_Pseudo
+	log exposure_Random
+	log step_HF
+	log step_LF
+	log step_Pseudo
+	log step_Random
+	log history_HF
+	log history_LF
+	log history_Pseudo
+	log history_Random
+	log fixation_dur
+	log baseline_dur
+	log time_fixation_onset
+	log time_baseline_start
+	log time_stimulus_onset
+	log time_response
+	log time_stimulus_offset
+	log display_width
+	log display_height
+	log requested_width
+	log requested_height
+	log eyelink_setup_status
+	log scaled_font_size
+	log canvas_backend
+	log keyboard_backend
+	log title
+

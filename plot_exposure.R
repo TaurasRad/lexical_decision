@@ -17,7 +17,7 @@ plot_exposure <- function(file = NULL) {
   columns <- paste0("exposure_", categories)
   if (!all(columns %in% names(d))) stop("Exposure columns are missing")
 
-  limits <- range(c(2000, unlist(d[columns])), na.rm = TRUE)
+  limits <- range(c(1500, unlist(d[columns])), na.rm = TRUE)
   if (diff(limits) == 0) limits <- limits + c(-50, 50)
   colors <- c("#0072B2", "#009E73", "#D55E00", "#CC79A7")
 
@@ -28,7 +28,7 @@ plot_exposure <- function(file = NULL) {
   for (i in seq_along(categories)) {
     category <- categories[i]
     changed <- d$adaptive_category == category
-    plot(c(0, d$experimental_trial_count), c(2000, d[[columns[i]]]),
+    plot(c(0, d$experimental_trial_count), c(1500, d[[columns[i]]]),
          type = "s", col = colors[i], lwd = 2, ylim = limits,
          xlab = "Test word", ylab = "Exposure time (ms)", main = category)
     points(d$experimental_trial_count[changed], d[[columns[i]]][changed],
