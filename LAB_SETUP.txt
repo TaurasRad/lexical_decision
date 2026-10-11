@@ -1,0 +1,40 @@
+Lexical decision + pupil — lab setup (EyeLink Portable Duo)
+===========================================================
+
+Open LexicalDecision_pupil.osexp from THIS folder so the loops can find
+Material/prereg/stims_practice.csv, stims_block1.csv, and stims_block2.csv.
+
+tracker_type must stay EyeLink. Dummy / mouse simulation is only for testing.
+
+1. pylink (Display PC, OpenSesame 4.1.22)
+-----------------------------------------
+Already installed for this Windows account:
+
+  "C:\Program Files (x86)\OpenSesame\python.exe" -m pip install sr-research-pylink
+
+That installed into the user site-packages (Program Files is not writable
+without Administrator). Confirm in the same OpenSesame Python:
+
+  "C:\Program Files (x86)\OpenSesame\python.exe" -c "import pylink; print(pylink.__file__)"
+
+If the OpenSesame GUI cannot import pylink, run the pip command again as the
+same Windows user who launches OpenSesame, or as Administrator so it lands in
+OpenSesame's own site-packages.
+
+2. Host PC checklist
+--------------------
+- Ethernet: Host 100.1.1.1, Display PC 100.1.1.2
+- Recording: binocular, 2000 Hz (Portable Duo)
+- Chin rest; participant looking at screen centre
+- Start Host software and wait until the tracker is ready before launching
+  the experiment
+- Calibrate + validate before practice and before each experimental block
+- Accept only if average validation error is <= 1 deg (both eyes)
+- No drift correction (the experiment does not run one)
+
+3. Keys and session
+-------------------
+- n = real Dutch word, m = nonword (right hand)
+- Sleep questions, then 12 practice + 50 random (block 1) + 50 sequential (block 2)
+- Adaptive staircase starts at 1500 ms / step 50; reset only before block 1
+- PsychoPy backends; fullscreen

@@ -27,7 +27,7 @@ set font_italic no
 set font_family mono
 set font_bold no
 set disable_garbage_collection yes
-set description "Adaptive exposure duration lexical decision with pupillometry (preregistered design)"
+set description "Adaptive exposure duration lexical decision with pupillometry (preregistered design). Lab: EyeLink Portable Duo, binocular 2000 Hz. See LAB_SETUP.txt."
 set coordinates uniform
 set compensation 0
 set color_backend psycho
@@ -52,7 +52,9 @@ define inline_script generalpreps
 	set description "Global variables and helper functions"
 	set _run ""
 	___prepare__
+	import os
 	import random
+	from pygaze import settings as pygaze_settings
 	
 	# In fullscreen, PsychoPy opens the window at the real screen size regardless of the
 	# width/height set in the experiment properties. Copy that size back so that canvases,
@@ -76,6 +78,11 @@ define inline_script generalpreps
 	)
 	var.scaled_font_size = max(1, int(round(20 * resolution_scale)))
 	
+	# pygaze_init applies DISPSIZE when the tracker is created (run phase).
+	pygaze_settings.DISPSIZE = (int(var.display_width), int(var.display_height))
+	pygaze_settings.BGC = var.background
+	pygaze_settings.FGC = var.foreground
+	
 	# Preregistered timing and adaptive parameters
 	var.fixation_dur = 2000
 	var.baseline_dur = 200
@@ -95,17 +102,38 @@ define inline_script generalpreps
 	
 	CATEGORIES = ['HF', 'LF', 'Pseudo', 'Random']
 	
+	def set_str(name, value):
+		# var.set() coerces '0101' to int 101 and would break 0101/1010 step-halving.
+		var.__vars__[name] = '' if value is None else str(value)
+	
+	def get_str(name, default=''):
+		value = var.__vars__.get(name, default)
+		if value is None:
+			return default
+		return str(value)
+	
 	def reset_adaptive_parameters():
 		for category in CATEGORIES:
 			var.set('exposure_' + category, var.initial_exposure)
 			var.set('step_' + category, var.initial_step)
-			var.set('history_' + category, '')
+			set_str('history_' + category, '')
 	
 	def et_log(msg):
 		eyetracker.log(msg)
 	
 	# Show a stimulus slightly before the target time so the flip lands on it
 	FLIP_MARGIN = 8
+	
+	for stim_file in (
+		'Material/prereg/stims_practice.csv',
+		'Material/prereg/stims_block1.csv',
+		'Material/prereg/stims_block2.csv',
+	):
+		stim_path = pool[stim_file]
+		if not os.path.isfile(stim_path):
+			raise ValueError(
+				'Stimulus file not found: {}. Open LexicalDecision_pupil.osexp from the lexical_decision folder.'.format(stim_file)
+			)
 	
 	reset_adaptive_parameters()
 	__end__
@@ -137,8 +165,8 @@ define pygaze_init pygaze_init
 	set tracker_type EyeLink
 	set eyelink_pupil_size_mode area
 	set eyelink_force_drift_correct no
-	set description "Initialize and calibrate eye tracker"
-	set calibrate yes
+	set description "Connect to EyeLink (calibration follows eyelink_setup so it uses binocular 2000 Hz)"
+	set calibrate no
 	set calbeep yes
 	set sacc_vel_thr 35
 	set sacc_acc_thr 9500
@@ -164,7 +192,7 @@ define sketchpad main_instructions
 define sketchpad practice_start
 	set duration keypress
 	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="The practice session is about to begin.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />The word disappears if you do not respond in time.<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size="[scaled_font_size]" html=yes show_if=always text="The practice session is about to begin.<br /><br />The eye tracker will be calibrated first.<br /><br />If the word is real, press 'n';<br />if it is a nonword, press 'm'.<br /><br />The word disappears if you do not respond in time.<br /><br />Use your right hand for both keys.<br /><br />Press any key to continue." x=0 y=0 z_index=0
 
 define sketchpad block_start
 	set duration keypress
@@ -201,8 +229,8 @@ define inline_script start_practice
 
 define inline_script new_block
 	set description "Experimental block setup; adaptive parameters reset only before block 1"
-	set _run ""
-	___prepare__
+	set _prepare ""
+	___run__
 	var.block = var.block + 1
 	var.adaptive_phase = 'experimental'
 	if var.block == 1:
@@ -210,7 +238,7 @@ define inline_script new_block
 	__end__
 
 define inline_script calibrate_eyetracker
-	set description "Calibration and validation before each experimental block (no drift correction)"
+	set description "Calibration and validation before practice and each experimental block (no drift correction)"
 	set _prepare ""
 	___run__
 	eyetracker.calibrate()
@@ -249,9 +277,10 @@ define inline_script end_block
 
 define sequence practice_sequence
 	set flush_keyboard yes
-	set description "Calibrated by pygaze_init; 12 practice trials"
+	set description "Calibrate after eyelink_setup (binocular 2000 Hz); 12 practice trials"
 	run start_practice always
 	run practice_start always
+	run calibrate_eyetracker always
 	run presstostart always
 	run continue_block_keyboard always
 	run start_recording always
@@ -355,7 +384,7 @@ define inline_script prepare_adaptive_trial
 	
 	var.exposure_time_before = var.get('exposure_' + category)
 	var.step_size_before = var.get('step_' + category)
-	var.outcome_history_before = var.get('history_' + category)
+	var.outcome_history_before = get_str('history_' + category)
 	
 	var.exposure_time_after = var.exposure_time_before
 	var.step_size_applied = var.step_size_before
@@ -456,7 +485,7 @@ define inline_script update_adaptive
 	category = var.adaptive_category
 	var.set('exposure_' + category, var.exposure_time_after)
 	var.set('step_' + category, var.step_size_after)
-	var.set('history_' + category, var.outcome_history_after)
+	set_str('history_' + category, var.outcome_history_after)
 	__end__
 
 define inline_script end_trial
