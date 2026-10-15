@@ -1,0 +1,4 @@
+eyelinkio==0.3.0  # read_edf internals are patched in extract_pupil.py
+pandas
+numpy
+pyreadr
