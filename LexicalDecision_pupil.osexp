@@ -40,6 +40,7 @@ define sequence experiment
 	set description "Runs a number of items in sequence"
 	run generalpreps always
 	run sleep_questions always
+	run eyelink_connect always
 	run pygaze_init always
 	run eyelink_setup always
 	run main_instructions always
@@ -142,30 +143,157 @@ define inline_script sleep_questions
 	set description "Self-reported sleep (exploratory, collected before the task)"
 	set _prepare ""
 	___run__
+	def key_char(key):
+		if key is None:
+			return None
+		k = str(key).lower()
+		if k in ('return', 'enter', 'num_enter', 'kp_enter'):
+			return 'enter'
+		if k in ('backspace', 'delete'):
+			return 'backspace'
+		if k in ('.', ',', 'period', 'comma', 'decimal', 'num_decimal', 'kp_decimal', 'kp_period'):
+			return '.'
+		if k.startswith('num_') and len(k) == 5 and k[4].isdigit():
+			return k[4]
+		if k.startswith('kp_') and len(k) == 4 and k[3].isdigit():
+			return k[3]
+		if len(k) == 1 and k.isdigit():
+			return k
+		return None
+	
 	def ask_hours(question):
+		kb = Keyboard(timeout=None)
+		kb.flush()
+		cnv = Canvas()
+		typed = ''
+		hint = 'Type a number of hours and press Enter.'
 		while True:
-			form = Form(cols=[1], rows=[2, 1, 1], spacing=25)
-			form.set_widget(Label(text=question, center=True), (0, 0))
-			text_input = TextInput(return_accepts=True, stub='')
-			form.set_widget(text_input, (0, 1))
-			form.set_widget(Label(text='Type a number of hours and press Enter.', center=True), (0, 2))
-			answer = form._exec(focus_widget=text_input)
-			try:
-				value = float(str(answer).strip().replace(',', '.'))
-			except ValueError:
-				continue
-			if 0 <= value <= 24:
-				return value
+			cnv.clear()
+			cnv.text(
+				question, y=-120, color='black', font_family='mono',
+				font_size=var.scaled_font_size, html=False
+			)
+			cnv.text(
+				typed if typed else '_', y=0, color='black', font_family='mono',
+				font_size=var.scaled_font_size, html=False
+			)
+			cnv.text(
+				hint, y=120, color='black', font_family='mono',
+				font_size=var.scaled_font_size, html=False
+			)
+			cnv.show()
+			key, timestamp = kb.get_key()
+			ch = key_char(key)
+			if ch == 'enter':
+				try:
+					value = float(typed.strip().replace(',', '.'))
+				except ValueError:
+					typed = ''
+					hint = 'Please enter a number of hours (0-24) and press Enter.'
+					continue
+				if 0 <= value <= 24:
+					return value
+				typed = ''
+				hint = 'Please enter a number of hours (0-24) and press Enter.'
+			elif ch == 'backspace':
+				typed = typed[:-1]
+			elif ch == '.' and '.' not in typed:
+				typed += '.'
+			elif ch is not None and ch.isdigit():
+				typed += ch
 	
 	var.sleep_last_night = ask_hours('How many hours did you sleep last night?')
 	var.sleep_average = ask_hours('On average, how many hours do you typically sleep?')
+	__end__
+
+define inline_script eyelink_connect
+	set description "Runtime fallback: if EyeLink is not connected, pygaze_init continues with Simple dummy. The saved tracker type stays EyeLink."
+	set _prepare ""
+	___run__
+	init_item = items['pygaze_init']
+	if not getattr(init_item.run, '_eyelink_fallback', False):
+		orig_run = init_item.run
+	
+		def eyelink_unavailable(exc):
+			parts = [type(exc).__name__, str(exc)]
+			cause = getattr(exc, '__cause__', None) or getattr(exc, '__context__', None)
+			if cause is not None and cause is not exc:
+				parts.append(type(cause).__name__)
+				parts.append(str(cause))
+			text = ' '.join(parts).lower()
+			if (
+				'failed to connect' in text
+				or 'could not connect' in text
+				or 'cannot connect' in text
+				or 'unable to connect' in text
+			):
+				return True
+			if 'pylink' in text and (
+				'no module' in text
+				or 'importerror' in text
+				or 'modulenotfounderror' in text
+			):
+				return True
+			return False
+	
+		def show_dummy_note():
+			cnv = Canvas()
+			cnv.text(
+				'EyeLink is not connected.',
+				y=-80, color='black', font_family='mono',
+				font_size=var.scaled_font_size, html=False
+			)
+			cnv.text(
+				'This run will continue WITHOUT eye tracking.',
+				y=0, color='black', font_family='mono',
+				font_size=var.scaled_font_size, html=False
+			)
+			cnv.text(
+				'Press any key to continue.',
+				y=80, color='black', font_family='mono',
+				font_size=var.scaled_font_size, html=False
+			)
+			cnv.show()
+			kb = Keyboard(timeout=None)
+			kb.flush()
+			kb.get_key()
+	
+		def pygaze_init_with_fallback():
+			# A GUI dummy selection (tests) is used as-is. EyeLink is tried first.
+			if init_item.var.tracker_type != 'EyeLink':
+				orig_run()
+				return
+			n_files = len(exp.data_files)
+			try:
+				orig_run()
+			except Exception as exc:
+				# A tracker object means the link came up and a later error is real.
+				if hasattr(exp, 'pygaze_eyetracker') or not eyelink_unavailable(exc):
+					raise
+				if len(exp.data_files) > n_files:
+					del exp.data_files[n_files:]
+				saved_type = init_item.var.tracker_type
+				init_item.var.tracker_type = 'Simple dummy'
+				try:
+					orig_run()
+				finally:
+					# Do not leave the in-memory GUI setting on dummy.
+					init_item.var.tracker_type = saved_type
+				var.eyelink_setup_status = 'dummy_fallback'
+				print(
+					'EyeLink not connected ({}); continuing with Simple dummy.'.format(exc)
+				)
+				show_dummy_note()
+	
+		pygaze_init_with_fallback._eyelink_fallback = True
+		init_item.run = pygaze_init_with_fallback
 	__end__
 
 define pygaze_init pygaze_init
 	set tracker_type EyeLink
 	set eyelink_pupil_size_mode area
 	set eyelink_force_drift_correct no
-	set description "Connect to EyeLink (calibration follows eyelink_setup so it uses binocular 2000 Hz)"
+	set description "Connect to EyeLink. If the tracker is not connected, eyelink_connect falls back to Simple dummy for this run only (saved tracker type stays EyeLink). Calibration follows eyelink_setup so a real EyeLink uses binocular 2000 Hz."
 	set calibrate no
 	set calbeep yes
 	set sacc_vel_thr 35
@@ -176,7 +304,11 @@ define inline_script eyelink_setup
 	set description "Preregistered acquisition: binocular recording at 2000 Hz (EyeLink only)"
 	set _prepare ""
 	___run__
-	if hasattr(eyetracker, 'send_command'):
+	# dummy_fallback is set by eyelink_connect when the EyeLink link failed.
+	# DumbDummy also has send_command, so only a real tracker (eyelink_model) gets 2000 Hz.
+	if var.eyelink_setup_status == 'dummy_fallback':
+		pass
+	elif getattr(eyetracker, 'eyelink_model', None):
 		eyetracker.send_command('binocular_enabled = YES')
 		eyetracker.send_command('sample_rate = 2000')
 		var.eyelink_setup_status = 'binocular_2000Hz_requested'
