@@ -25,10 +25,10 @@ random.seed(1)
 
 from openexp.backend import configurable
 from openexp._keyboard import psycho as psycho_keyboard
-from libopensesame.widgets import _form
 import pygaze.eyetracker
 
 MESSAGES = []
+SLEEP_KEYS = iter(['7', 'return', '8', 'return'])
 
 
 @configurable
@@ -47,11 +47,15 @@ def simulated_get_key(self):
             return correct_response, clock.time()
         return ('m' if correct_response == 'n' else 'n'), clock.time()
     clock.sleep(20)
-    return (keylist[0] if keylist else 'space'), clock.time()
+    if keylist is None:
+        try:
+            return next(SLEEP_KEYS), clock.time()
+        except StopIteration:
+            return 'space', clock.time()
+    return keylist[0], clock.time()
 
 
 psycho_keyboard.Psycho.get_key = simulated_get_key
-_form.Form._exec = lambda self, focus_widget=None: '7'
 
 _EyeTracker = pygaze.eyetracker.EyeTracker
 
